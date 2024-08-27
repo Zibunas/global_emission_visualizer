@@ -5,10 +5,20 @@ import matplotlib.patheffects as path_effects
 from matplotlib.colors import LinearSegmentedColormap
 from tkinter import simpledialog, messagebox
 
-'''This file contains all plot functions and corresponding data preporcessing'''
+'''This file contains all plot functions and corresponding data preporcessing
+1) The initialization of the first figure activating the interactive nature of the tool (connection to def on_click)
+2) The starting figure (a map of the world without any emission data shown
+3) A bar plot for continental emissions
+4) A pie plot for continental or national shares to the global emissions
+5) A world map as heatmap for emissions with the posibility to higjlight each continents top polluters)'''
 
 def init_figure(pm):
-    pm.fig = plt.figure(figsize=(19*14/19, 10.8*14/19))
+    #pm.fig = plt.figure(figsize=(19.2*6.5/10, (10.8-0.5)*5.5/10), dpi=100)
+    pm.fig = plt.figure(figsize=(19.2*8/10, (10.8-0.5)*8/10), dpi=100)
+    # Get the figure manager
+    manager = plt.get_current_fig_manager()
+    # Set the window position (x, y) on the screen
+    manager.window.wm_geometry("+10+10") 
     pm.ax = pm.fig.add_subplot(111)  # '111' stands for 1x1 grid, first subplot
     pm.ax.set_facecolor((0.9, 0.9, 0.9))
     pm.fig.canvas.mpl_connect('button_press_event', lambda event: pm.on_click(event))
@@ -38,14 +48,13 @@ def start_figure(pm):
     # Axis labels and title
     plt.xlabel('Longitude')
     plt.ylabel('Latidue')
-    plt.title('Homescreen - Click on a country to see its history of annual emissions or choose anoter plot by clicking the buttons on the left.')
+    plt.title('Homescreen - Click on a country to see its GHG emissions history or choose another plot via the buttons on the left.')
     # Tight layout, so everything fits the figure size
-    # plt.tight_layout(rect=[0, 0.1, 1, 1])
     plt.tight_layout()
     # Show the plot
     plt.show(block=False)
     if pm.welcome:
-        messagebox.showinfo("Information", f"Welcome to this iteractive tool for exploring the history of global GHG emissions between 1960 and 2022.\nYou can click any country to explore its history of annual GHG emissions or you can click the buttons on the left to explore other plots.\nHave fun. Best regards Christian!")
+        messagebox.showinfo("WELCOME to this GHG emission visualizer tool", f"Welcome to this interactive tool for exploring the history of global GHG emissions between 1960 and 2022. You can click on any country to explore its history of annual GHG emissions or you can click on the buttons on the left to explore other plots.\nHave fun. Best regards Christian!")
         pm.welcome = False
     plt.show()
 
@@ -54,30 +63,40 @@ def line_plot(pm):
     country_data.index = pd.to_numeric(country_data.index, errors='coerce')
     filtered_data = country_data[country_data.index >= country_data.index.min()]
 
-    if pm.add_to_fig:
-        # If a figure already exists, use the current axis
-        plt.figure(pm.fig_line.number)
-        plt.sca(pm.ax_line)
+    if pm.add_to_fig: # If a figure already exists, use the current axis
+        if hasattr(pm, 'fig_line') and pm.fig_line is not None and plt.fignum_exists(pm.fig_line.number):
+            plt.figure(pm.fig_line.number)  # Activate the existing figure
+            plt.sca(pm.ax_line)  # Set the current axis
+        else:
+            pm.fig_line = plt.figure()  # Create a new figure
+            pm.ax_line = pm.fig_line.add_subplot(111)
+            pm.fig_line.canvas.mpl_connect('button_press_event', lambda event: pm.on_click(event)) # connect user clicking for the new fig
+            pm.min_line = 1000
+            pm.max_line = 0
 
-    elif pm.close_fig:
-        plt.close(pm.fig_line)
+    elif pm.close_fig: # If a figure exists and it is specifyed by the user to close the last plot (not default) upon creating a new plot, generate new fig and ax
+        plt.close(pm.fig_line) # close last line plot
         pm.fig_line = plt.figure()
         pm.ax_line = pm.fig_line.add_subplot(111)
-        pm.fig_line.canvas.mpl_connect('button_press_event', lambda event: pm.on_click(event))
+        pm.fig_line.canvas.mpl_connect('button_press_event', lambda event: pm.on_click(event)) # connect user clicking for the new fig
     else:
-        pm.fig_line = plt.figure()
+        pm.fig_line = plt.figure() # If no figure exists or it is specifyed by the user to open a new plot (default), generate new fig and ax
         pm.ax_line = pm.fig_line.add_subplot(111)
-        pm.fig_line.canvas.mpl_connect('button_press_event', lambda event: pm.on_click(event))
+        pm.fig_line.canvas.mpl_connect('button_press_event', lambda event: pm.on_click(event)) # connect user clicking for the new fig
+
 
 
     # Plot on the existing axis
     pm.ax_line.plot(filtered_data.index, filtered_data.values / 1000, marker='*', label=f'{pm.country_name}')
     pm.ax_line.set_xlabel('Years')
     pm.ax_line.set_ylabel('GHG emission in Gigatons per year')
-    pm.ax_line.set_title(f'History of Annual GHG emissions of {pm.country_name}.')
+    
+    pm.ax_line.set_title(f'History of Annual GHG emissions.')
 
+    # calculation to position the textboxes/buttons on the plot depending on the y data 
     if pm.add_to_fig:
-        min_line = min(filtered_data.values/1000)
+        min_line = min(filtered_data.values/1000) # does not work if the line plot was closed
+        # min_line = 0
         max_line = max(filtered_data.values/1000)
         pm.min_line = min(pm.min_line, min_line)
         pm.max_line = max(pm.max_line, max_line)
@@ -85,11 +104,14 @@ def line_plot(pm):
             annotation.remove()
         pm.fig_line.canvas.draw()
     else:
-        pm.min_line = min(filtered_data.values/1000)
+        pm.min_line = min(filtered_data.values/1000) # does not work if the line plot was closed
+        #pm.min_line = 0
         pm.max_line = max(filtered_data.values/1000)
+   
+
+    y_positions = [(pm.max_line - pm.min_line)/10 * i + pm.min_line for i in [1,2]]
 
     # Add text boxes to enable navigation between plots and altering of settings for each plot
-    y_positions = [(pm.max_line - pm.min_line)/10 * i + pm.min_line for i in [1,2]]
     pm.text_elements['line_1'] = pm.ax_line.text(2022, y_positions[0], "New countires can be added to the plot (on/off)", 
                                         bbox=pm.bbox_properties, 
                                         horizontalalignment='right',verticalalignment='center', rotation=0)
@@ -97,7 +119,6 @@ def line_plot(pm):
     pm.text_elements['line_2'] = pm.ax_line.text(2022, y_positions[1], "New countries close the last line plot (on/off)", 
                                         bbox=pm.bbox_properties,
                                         horizontalalignment='right',verticalalignment='center', rotation=0)
-    
     
     plt.legend()
     plt.tight_layout()
@@ -126,7 +147,7 @@ def bar_contiental_emissions(pm,year):
     plt.xlabel('Continent')
     plt.ylabel('Annual GHG emissions in Gigatons per year')
     # plt.title('Emissions by Continent in {}'.format(year))
-    plt.title('Annual emissions by continent in {}.'.format(', '.join(map(str, year))))
+    plt.title('Annual GHG emissions by continent in {}.'.format(', '.join(map(str, year))))
     plt.xticks(rotation=45)
     # Add text to the plot
 
@@ -156,43 +177,94 @@ def bar_contiental_emissions(pm,year):
     # Show the plot
     plt.show()
     
-def world_heatmap (pm,year): # TDi leerzeichen zwischen funktionsnamen und klammern geht zwar da der python das automatisch entfernt, aber würd ich nicht empfehlen :D 
-    print(pm.switch_mode_heatmap)
+def world_heatmap(pm,year): 
     pm.location = "loc_heatmap_plot"
-    world = pm.data
-    if pm.switch_mode_heatmap == "heatmap": # TDi variblenname ist hier nicht so sprechend
+    world = pm.data.copy()
+    pm.text_elements.clear() 
+    if pm.switch_mode_heatmap == "heatmap":
     
         # Plot the choropleth map
         pm.fig.clear()
         pm.ax = pm.fig.add_subplot(111)
-        # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-        plot_hm = world.plot(column=year, cmap=plt.get_cmap('autumn').reversed(), linewidth=1.2, ax=pm.ax, edgecolor='0', legend=True,missing_kwds={
-            "color": "0.6",
-            "edgecolor": "black",
-            "hatch": "x",
-            "label": "Missing values"})
-        
-        # cbar = plot_hm.get_legend().get_colorbar()
-        # cbar.set_label('GHG emissions in Gigatons per year')
-        
-        plt.title(f"Emission heatmap in {year}. Click on a country to see its history of annual emissions.")
 
-    elif pm.switch_mode_heatmap == "highlight":
+        # Divide the values for the selected year by 1000
+        world[year] = world[year] / 1000
+        
+        # Plot the choropleth map without the automatic colorbar (legend)
+        plot_hm = world.plot(
+            column=year, 
+            cmap=plt.get_cmap('copper').reversed(), 
+            linewidth=1.2, 
+            ax=pm.ax, 
+            edgecolor='0', 
+            legend=False,  # Disable the automatic legend
+            missing_kwds={
+                "color": "0.6",
+                "edgecolor": "black",
+                "hatch": "x",
+                "label": "Missing values"
+            }
+        )
+            
+        # Retrieve the colorbar instance
+        cbar = plot_hm.get_figure().colorbar(plot_hm.collections[0], ax=pm.ax)
+
+        # Set the label on the left side of the colorbar
+        cbar.set_label(f"GHG emissions in {year} in Gigatons per year", rotation=90, labelpad=10)
+        cbar.ax.yaxis.set_label_position('left')  # Move the label to the left
+
+        plt.title(f"GHG emission heatmap in {year}.")
+
+    
+    elif pm.switch_mode_heatmap == "highlight" and pm.switch_mode_top_polluters_all:
+        pm.fig.clear()
+        pm.ax = pm.fig.add_subplot(111)
+        # pm.ax.set_aspect('equal', 'box')
+        # pm.ax.set_aspect('auto')
+
+        # Identify the top polluters globally
+        top_polluters_global = world.nlargest(pm.num_polluters, year)
+        
+        # Plot the map with countries colored by continent
+
+        world.plot(column='continent', cmap='viridis', linewidth=1.2, ax=pm.ax, edgecolor='0')
+        
+        # Define the colors for the colormap & Create the colormap
+        colors = [ (0.2, 0.2, 0.2), (0.7, 0.7, 0.7)] 
+        custom_cmap = LinearSegmentedColormap.from_list('custom_gray', colors)
+
+        # Assign colors to top polluters globally
+        colors_assigned = custom_cmap(np.linspace(0, 1, len(top_polluters_global)))
+
+        # Plot top polluters with assigned colors
+        for i, (idx, country) in enumerate(top_polluters_global.iterrows()):
+            world[world['name'] == country['name']].plot(ax=pm.ax, color=colors_assigned[i], edgecolor="darkred", linewidth=1.2)
+            pm.ax.text(country.geometry.centroid.x, country.geometry.centroid.y, str(i + 1), fontsize=10, ha='center', va='center', color='white', fontweight='bold', path_effects=[path_effects.Stroke(linewidth=2, foreground='black'), path_effects.Normal()])               
+
+        plt.title(f"Top {pm.num_polluters} polluters of the world in {year}.")
+
+        pm.text_elements['text5'] = pm.ax.text(-175, -30, "Top polluters in the world <-> by continent", 
+                                            bbox=pm.bbox_properties, 
+                                            horizontalalignment='left',verticalalignment='center', rotation=0)
+
+    elif pm.switch_mode_heatmap == "highlight" and not pm.switch_mode_top_polluters_all:
+
+        pm.fig.clear()
+        pm.ax = pm.fig.add_subplot(111)
+        # pm.ax.set_aspect('equal', 'box')
+        pm.ax.set_aspect('auto')
 
         top_polluters = world.groupby('continent').apply(lambda x: x.nlargest(pm.num_polluters, 2008))
         # Plot the map with countries colored by continent
-        pm.fig.clear()
-        pm.ax = pm.fig.add_subplot(111)
+
         world.plot(column='continent', cmap='viridis', linewidth=1.2, ax=pm.ax, edgecolor='0')
         
-        # Define the colors for the colormap
+        # Define the colors for the colormap & Create the colormap
         colors = [ (0.2, 0.2, 0.2), (0.7, 0.7, 0.7)] 
-        # Create the colormap
         custom_cmap = LinearSegmentedColormap.from_list('custom_gray', colors)
 
         # Plot the top polluters with the generated shades of continent colors
-        # Iterate over continents
-        for continent, continent_data in top_polluters.groupby(level=0): # TDi wenn du den continent nicht brauchst kannst du auch ein "_" schreiben, also for _, continent_data in top_polluters.groupby(level=0):. Das macht dann direkt klar dass du den wert nicht brauchst.
+        for _, continent_data in top_polluters.groupby(level=0): 
             # Sort the top polluters by emissions
             continent_data = continent_data.sort_values(by=year, ascending=False)
             
@@ -200,14 +272,17 @@ def world_heatmap (pm,year): # TDi leerzeichen zwischen funktionsnamen und klamm
             colors_assigned = custom_cmap(np.linspace(0, 1, len(continent_data)))
             
             # Plot top polluters with assigned colors
-            for i, (idx, country) in enumerate(continent_data.iterrows()): # TDi same as above mit idx
+            for i, (idx, country) in enumerate(continent_data.iterrows()): # 
                 world[world['name'] == country['name']].plot(ax=pm.ax, color=colors_assigned[i], edgecolor="darkred", linewidth=1.2)            
                 pm.ax.text(country.geometry.centroid.x, country.geometry.centroid.y, str(i + 1), fontsize=10, ha='center', va='center', color='white',fontweight= 'bold',path_effects=[path_effects.Stroke(linewidth=2, foreground='black'), path_effects.Normal()])
 
-        plt.title(f"Top {pm.num_polluters} polluters of each continent in {year}. Click on a country to see its history of annual emissions.")
+        plt.title(f"Top {pm.num_polluters} polluters of each continent in {year}.")
+
+        pm.text_elements['text5'] = pm.ax.text(-175, -30, "Change between top polluters in the world or by continent", 
+                                            bbox=pm.bbox_properties, 
+                                            horizontalalignment='left',verticalalignment='center', rotation=0)
 
     # Add text to the plot
-    pm.text_elements.clear() 
     pm.text_elements['text1'] = pm.ax.text(-175, 18, "Get back to the start", 
                                             bbox=pm.bbox_properties,
                                             horizontalalignment='left',verticalalignment='center', rotation=0)
@@ -220,24 +295,32 @@ def world_heatmap (pm,year): # TDi leerzeichen zwischen funktionsnamen und klamm
                                             bbox=pm.bbox_properties, 
                                             horizontalalignment='left',verticalalignment='center', rotation=0)
 
-    pm.text_elements['text4'] = pm.ax.text(-175, -18, "Change number of shown top polluters", 
+    pm.text_elements['text4'] = pm.ax.text(-175, -18, "Change number of highlighted top polluters", 
                                             bbox=pm.bbox_properties, 
                                             horizontalalignment='left',verticalalignment='center', rotation=0)
+    
     pm.ax.set_facecolor((0.9, 0.9, 0.9))
-    # Set the limits of the plot
+
+    # Plot limits
     plt.xlim(-180, 180)
-    plt.ylim(-90, 90)  # Adjusted to match the y-axis range
+    plt.ylim(-90, 90)
+    # Axis labels
     plt.xlabel('Longitude')
     plt.ylabel('Latidue')
+    # tight layout before the pop up windows otherwise it looks odd
+    # Rescale the plot after everything is drawn
+    pm.ax.set_aspect('auto')
+    pm.ax.relim()  # Recalculate the limits
+    pm.ax.autoscale_view()
+
     plt.tight_layout()
-    
+
     if pm.first_heatmap == True and pm.switch_mode_heatmap == "heatmap":
         messagebox.showinfo("Information", "You can click on a country in the heatmap to see its historic annual emissions.")
         pm.first_heatmap = False
     elif pm.first_top_polluter == True and pm.switch_mode_heatmap == "highlight":
         messagebox.showinfo("Information", "Also when top polluters are highlighted, you can click on a country in the heatmap to see its historic annual emissions.")
         pm.first_top_polluter = False
-    # Tight layout, so everything fits the figure size
     
     # Show the plot
     plt.show()
@@ -293,7 +376,6 @@ def pie_plot(pm,year):
     sorted_percentages = percentages[percentages.sort_values(ascending=False).index]
 
     # Specify the column you want to move to the end
-    # TDi könnte acuh eine eigene funktion sein wenn dus schon so variabel machen willst
     column_to_move = "rest"
 
     # Extract the column to be moved
@@ -305,9 +387,7 @@ def pie_plot(pm,year):
     # Create a pie chart
     pm.fig.clear()
     pm.ax = pm.fig.add_subplot(111)
-    # fig.canvas.mpl_connect('button_press_event', on_click)
-    # plt.pie(sorted_percentages, labels=sorted_percentages.index,fontsize=7, autopct='%1.1f%%')
-    # Generate colors from the viridis colormap
+
     cmap = plt.get_cmap("viridis")
     colors1 = cmap(np.linspace(0, 1, len(sorted_percentages.index)))
 

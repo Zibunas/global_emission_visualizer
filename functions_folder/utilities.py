@@ -3,10 +3,10 @@ from tkinter import simpledialog, messagebox
 from shapely.geometry import Point
 
 '''This file contains all functions to navigate between the plots:
-action_map pairs the keys of the buttons of each plot with functions
-the definition of the functions are listed below the action map or are plot functions that are part of the class PlotManager
-on_click connects the user clicking with the action map and enables line plots for each country showing historic annual GHG emissions
-the remaining functions are requests for user input and fail safes to catch invalid inputs'''
+1) action_map pairs the keys of the buttons of each plot with functions
+2) the definition of the functions are listed below the action map or are plot functions that are part of the class PlotManager
+3) on_click connects the user clicking with the action map and enables line plots for each country showing historic annual GHG emissions
+4) the remaining functions are requests for user input and fail safes to catch invalid inputs'''
 
 # Action map for all changes that are triggered by the textboxes on each figure
 action_map = {
@@ -38,7 +38,10 @@ action_map = {
         'text2': ("Show a different year", lambda pm: ac_heatmap_new_year(pm)),
         'text3': ("Switch heatmap <-> top polluters", lambda pm: ac_heatmap_aggregation(pm)),
         'text4': ("Change number of shown top poluters", lambda pm: ac_heatmap_num_top(pm)),
+        'text5': ("Change between top polluters in the world or by continent", lambda pm: ac_heatmap_top_polluters_all_v_continent(pm)),
         'stay': ('stay', lambda pm: pm.world_heatmap(pm.year_1)),
+        'line_1': ('stay', lambda pm: ac_line_add_to_fig(pm)),
+        'line_2': ('stay', lambda pm: ac_line_close(pm)),
     },
 }
 
@@ -95,6 +98,11 @@ def ac_heatmap_num_top(pm):
     pm.switch_mode_heatmap = "highlight"
     pm.world_heatmap(pm.year_1)
 
+# switches between highlighting the top polluters in the world or by continent
+def ac_heatmap_top_polluters_all_v_continent(pm): 
+    pm.switch_mode_top_polluters_all = True if pm.switch_mode_top_polluters_all == False else False
+    pm.world_heatmap(pm.year_1)
+
 # switches between adding to the line plot or creating a separat line plot of a nation's historic GHG emissions
 def ac_line_add_to_fig(pm):
     pm.add_to_fig = True if pm.add_to_fig == False else False
@@ -110,16 +118,16 @@ def ac_line_close(pm):
         messagebox.showinfo('Conflict','You chose to close the last line plot when plotting a new country. Therefore, the new country will plotted in a separat figure.')
 
 '''This function handles all interactive actions.
-It searches the action map based on the current location indicating the which plot is visible and a key (e.g., text3).
+It searches the action map based on the current location indicating which plot is visible and a key representing the clicked textbox/butto(e.g., text3).
 On top it blocks interactive actions when zooming.
-Finally it enables to get plots when clicking on countries in the heatmap'''
+Finally it enables to get plots when clicking on countries shown in the starting figure and the heatmap'''
 def on_click(pm, event):
 
-    '''When in zooming mode all interactive utilities that are implemented are blocked'''
+    # When in zooming mode all interactive utilities that are implemented are blocked
     if event.canvas.toolbar.mode == 'zoom rect':        
         return
 
-    '''Being at the heatmap plot the user can click countries to get their historic emissions'''
+    # Being at the heatmap plot the user can click countries to get their historic emissions
     if pm.location == 'loc_heatmap_plot' or pm.location =='loc_start_plot':
         # Get the x, y coordinates of the click
         x, y = event.xdata, event.ydata
@@ -158,13 +166,13 @@ def check_year_in_range(pm):
     input = simpledialog.askstring("User-Input", "Please choose a year between 1960 and 2022")
     try: # in case the input is not a number
         year_add= int(input)
-    except:
+    except ValueError:
         if input is None: # stay at the current figure if the input was cancelled
             messagebox.showinfo(*pm.text_input_cancelled)
             action = action_map[pm.location]['stay']
             action(pm)
         else: # if it is not an int
-            messagebox.showerror("Error","Your input was not an integer between 1960 and 2022, please choose again") 
+            messagebox.showerror("Error","Your input was NOT an INTEGER between 1960 and 2022, please choose again") 
             return check_year_in_range(pm) #for invalid input returning the function again
     else:
         if year_add in range(1960,2023): # if it is not out of range
@@ -176,16 +184,16 @@ def check_year_in_range(pm):
 '''This function asks the user to select a number of top polluters that shall be highlighted for each continent.
 In addition, some fail safes ensure handling of invalid inputs and input cancelation'''
 def check_num_top_in_range(pm):
-    input = simpledialog.askstring("User-Input", "How many top polluters of each continent do you want to see highlighted")
+    input = simpledialog.askstring("User-Input", "How many top polluters do you want to see highlighted")
     try:
         pm.num_polluters = int(input)
-    except ValueError:
+    except:
         if input is None: # stay at the current figure if the input was cancelled
             messagebox.showinfo(*pm.text_input_cancelled)
             action = action_map[pm.location]['stay']
             action(pm)
         else:
-            messagebox.showerror("Error","Please type in an integer e.g., 3")
+            messagebox.showerror("Error","Please type in an INTEGER e.g., 3")
             return check_num_top_in_range(pm)
 
 '''Wrapper for changing the criteria of the aggregation in the pie plot, so called cut off criteria'''
@@ -201,19 +209,19 @@ def get_cutoff_limits(pm, text, parent = None):
     try:
         # Try to convert the input to an integer
         cut_off_limit = int(input)
-    except ValueError:
+    except:
         try:
             # If it fails, try to convert it to a float
             cut_off_limit = float(input)
-        except ValueError:
+        except:
             if input is None: # stay at the current figure if the input was cancelled
                 messagebox.showinfo(*pm.text_input_cancelled)
                 action = action_map[pm.location]['stay']
                 action(pm)
             else: # If both conversions fail, raise an error or set a default value
                 messagebox.showerror("Error","Please type in either an integer e.g., 5 or a float e.g., 5.2")
-                return get_cutoff_limits(text)
+                return get_cutoff_limits(pm, text)
     if cut_off_limit < 0 or cut_off_limit > 100:
         messagebox.showerror("Error","Your input was smaller that 0 or bigger than 100, which makes no sense for a cut off")
-        return get_cutoff_limits(text)
+        return get_cutoff_limits(pm, text)
     return cut_off_limit                           
