@@ -9,3 +9,9 @@ All files to run or inspect the code are provided in the subfolders (python file
 Have fun!
 
 Best regards Christian Zibunas
+
+# Previw of the tool
+
+Here is a preview of the tool:
+
+![Tool Preview](https://github.com/Zibunas/global_emission_visualizer/blob/main/Tool_preview_01.png)
