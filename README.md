@@ -10,8 +10,13 @@ Have fun!
 
 Best regards Christian Zibunas
 
-# Previw of the tool
+# Here is a preview of the tool:
 
-Here is a preview of the tool:
-
+Homescreen:
 ![Tool Preview](https://github.com/Zibunas/global_emission_visualizer/blob/main/Tool_preview_01.png)
+
+Pie plot:
+![Tool Preview](https://github.com/Zibunas/global_emission_visualizer/blob/main/Tool_preview_02.png)
+
+Highlighted top polluters:
+![Tool Preview](https://github.com/Zibunas/global_emission_visualizer/blob/main/Tool_preview_03.png)
