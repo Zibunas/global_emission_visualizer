@@ -9,7 +9,8 @@ All files to run or inspect the python code are provided in the subfolders (pyth
 
 Have fun!
 
-Best regards Christian Zibunas
+Best regards,
+Christian Zibunas
 
 # Development and purpose of this tool:
 **Development:**
