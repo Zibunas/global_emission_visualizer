@@ -5,7 +5,7 @@ you can run the global_emission_visualizer tool by running the EXE file "global_
 Thereby, you will not need to install specific python packages and you will not encounter issues with package conflicts.
 Your will still need all the folders to successfully run the exe.
 Alternatively, you can run the file "global_emission_visualizer_CV.py" as it is the main script.
-All files to run or inspect the python code are provided in the subfolders (python files for functions and a excel file for the data).
+All files to run or inspect the python code are provided in the subfolders (python files for functions and an excel file for the data).
 
 Have fun!
 
